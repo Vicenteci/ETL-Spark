@@ -60,4 +60,9 @@ RUN mkdir -p $SPARK_LOG_DIR && \
 COPY ./scripts/start-spark.sh /start-spark.sh
 RUN sed -i 's/\r$//g' /start-spark.sh && chmod +x /start-spark.sh
 
+# Descargar el driver JDBC de PostgreSQL
+RUN wget --no-verbose -O /opt/spark/jars/postgresql-42.7.3.jar \
+    "https://jdbc.postgresql.org/download/postgresql-42.7.3.jar"
+
+
 CMD ["/bin/bash", "/start-spark.sh"]
