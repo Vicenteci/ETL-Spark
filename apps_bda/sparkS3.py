@@ -22,7 +22,7 @@ spark = SparkSession.builder \
 
 
 try:
-    df3 = spark.read.option("delimiter", ",").option("header", True).csv("/opt/spark-data/sales_data.csv")
+    df3 = spark.read.option("delimiter", ",").option("header", "true").csv("/opt/spark-data/sales_data.csv")
     
     df3 \
     .write \
