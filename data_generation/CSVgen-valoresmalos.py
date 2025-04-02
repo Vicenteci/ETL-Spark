@@ -97,10 +97,10 @@ def generate_csv_file(file_name="sales_data.csv", num_rows=100):
     
     for _ in range(num_rows):
         date = fake.date()
-        store_id = random.choice([fake.random_int(min=1, max=1000), "", None])  # Algunos valores nulos o vacíos
-        product_id = random.choice([f"P{random.randint(18, 80)}", "XX", None])  # Alfanumérico con errores
-        quantity_sold = random.choice([random.randint(20000, 120000), "", None, -5])  # Valores erróneos
-        revenue = random.choice([random.randint(100, 3000), "", None, "error"])  # Errores de formato
+        store_id = random.choice([fake.random_int(min=1, max=1000), None])  # 10% de los valores serán nulos
+        product_id = random.choice([f"P{random.randint(18, 80)}", "XX", None])  # 10% de los valores con errores
+        quantity_sold = random.choice([random.randint(20000, 120000), None, -5])  # 10% con errores o nulos
+        revenue = random.choice([random.randint(100, 3000), None, "error"])  # 5% de los valores con errores
         
         data.append([date, store_id, product_id, quantity_sold, revenue])
     
