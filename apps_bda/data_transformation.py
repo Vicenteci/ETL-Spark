@@ -100,13 +100,13 @@ def process_file(file_key):
     df.show()
 
     # ================================
-    # Guardar los datos transformados en formato Parquet
+    # Guardar los datos transformados en formato CSV
     # ================================
 
-    output_path = f"s3a://{bucket_name}/Processed/{os.path.basename(file_key).split('.')[0]}_transformed.parquet"
-    df.write.parquet(output_path)
+    df.write.option("header", "true").csv(f"s3a://{bucket_name}/Processed/{file_key}")
 
-    print(f"Datos transformados guardados en: {output_path}")
+
+    print(f"Datos transformados guardados en: {bucket_name}")
 
 # Procesar cada archivo
 for file_key in files_to_process:
