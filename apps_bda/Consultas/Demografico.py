@@ -112,8 +112,6 @@ window_spec = Window.partitionBy("demographics").orderBy(desc("total_revenue"))
 df_top_products = df_product_preference.withColumn("rank", row_number().over(window_spec)).filter(col("rank") == 1)
 
 # Imprimir resultados
-print('\n Localización con más beneficios de venta:\n')
-df_grouped.show()
 
 print("\n Rendimiento de ventas por grupo demográfico:\n")
 df_demographic_sales.show(20, False)
