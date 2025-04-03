@@ -1,10 +1,10 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when, current_timestamp
-from pyspark.sql.types import IntegerType, StringType
+from pyspark.sql.functions import col, when, current_timestamp, lit, trim, desc
+from pyspark.sql.types import IntegerType
 
 # Crear sesión de Spark
 spark = SparkSession.builder \
-    .appName("TransformarPostgresCSV") \
+    .appName("TransformarPostgres_ImputeMode") \
     .config("spark.hadoop.fs.s3a.endpoint", "http://localstack:4566") \
     .config("spark.hadoop.fs.s3a.access.key", "test") \
     .config("spark.hadoop.fs.s3a.secret.key", "test") \
@@ -12,47 +12,44 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 # Ruta del archivo en S3 (LocalStack)
-s3_path = "s3a://bucket-1/Postgres/postgres_data.csv"
+s3_path_postgres = "s3a://bucket-1/Postgres/postgres_data.csv"
 
-# Leer el archivo CSV con la opción "header=True" para que Spark detecte la cabecera
-df = spark.read.option("delimiter", ",").csv(s3_path, header=True)
+# Leer el archivo CSV con cabecera
+df_postgres = spark.read.option("delimiter", ",").csv(s3_path_postgres, header=True)
 
-# Mostrar los primeros registros para verificar que Spark detectó correctamente las cabeceras
-df.show(10)
-
-# TRANSFORMACIÓN
-
-# Imputación para columnas numéricas con la media (aquí asumimos que algunas columnas numéricas, ajusta según tu esquema)
-numerical_columns = ['store_id']  # En este caso solo 'store_id' parece numérica, ajustar según tu archivo
-
+# Imputación para columnas numéricas con la media (por ejemplo, store_id)
+numerical_columns = ['store_id']
 for column in numerical_columns:
-    mean_value = df.agg({column: 'mean'}).collect()[0][0]
-    df = df.na.fill({column: mean_value})
+    mean_value = df_postgres.agg({column: 'mean'}).collect()[0][0]
+    df_postgres = df_postgres.na.fill({column: mean_value})
 
-# Supresión de filas con valores nulos en la columna 'store_name' (si es crítica)
-df = df.dropna(subset=['store_name'])
+# Columnas a imputar (para datos categóricos)
+columns_to_impute = ['store_name', 'location', 'demographics']
 
-# Eliminar duplicados basados en ciertas columnas (por ejemplo, 'store_id' y 'store_name')
-df = df.dropDuplicates(['store_id', 'store_name'])
+for column in columns_to_impute:
+    # Calcular el valor más frecuente (modo) para la columna
+    mode_row = df_postgres.groupBy(column).count().orderBy(desc("count")).first()
+    mode_value = mode_row[column] if (mode_row is not None and mode_row[column] is not None and mode_row[column] != "") else None
+    # Si se encontró un valor válido, reemplazar los nulos, cadenas vacías o solo espacios por ese valor
+    if mode_value is not None:
+        df_postgres = df_postgres.withColumn(
+            column,
+            when(col(column).isNull() | (trim(col(column)) == ""), lit(mode_value))
+            .otherwise(col(column))
+        )
 
-# Conversión de columnas a tipos adecuados (store_id como entero, las demás como String)
-df = df.withColumn("store_id", df["store_id"].cast(IntegerType()))
-df = df.withColumn("store_name", df["store_name"].cast(StringType()))
-df = df.withColumn("location", df["location"].cast(StringType()))
-df = df.withColumn("demographics", df["demographics"].cast(StringType()))
+# Convertir 'store_id' a entero si es necesario
+df_postgres = df_postgres.withColumn("store_id", col("store_id").cast(IntegerType()))
 
-# Agregar columna 'Tratados' con valor 'Sí' o 'No' (si 'store_name' es nulo)
-df = df.withColumn("Tratados", when(df["store_name"].isNotNull(), "Sí").otherwise("No"))
+# Agregar columna 'Tratados' y 'Fecha Inserción'
+df_postgres = df_postgres.withColumn("Tratados", when(col("store_id").isNotNull(), "Sí").otherwise("No"))
+df_postgres = df_postgres.withColumn("Fecha Inserción", current_timestamp())
 
-# Agregar columna 'Fecha Inserción' con la fecha y hora actual (UTC)
-df = df.withColumn("Fecha Inserción", current_timestamp())
+# Mostrar datos transformados para verificar
+df_postgres.show(10, truncate=False)
 
-# Mostrar los primeros 10 registros para verificar
-df.show(10)
+# Guardar el DataFrame procesado en S3 (sobrescribiendo la carpeta si existe)
+output_path_postgres = "s3a://bucket-1/Postgres_limpio/"
+df_postgres.write.option("header", "true").mode("overwrite").csv(output_path_postgres)
 
-# Guardar el DataFrame procesado de vuelta en S3
-output_path = "s3a://bucket-1/Postgres_Clean/"
-df.write.option("header", "true").csv(output_path)
-
-# Detener la sesión de Spark
 spark.stop()

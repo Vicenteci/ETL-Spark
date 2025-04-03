@@ -12,7 +12,7 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 # Ruta del archivo en S3 (LocalStack)
-s3_path = "s3a://bucket-1/SalidaKafka/part-00000-41831fa9-827a-40e0-8158-6ce7d4cf57f4-c000.csv"
+s3_path = "s3a://bucket-1/SalidaKafka/part-00000-1f661d54-3de8-4cfe-bf8d-8930989021d5-c000.csv"
 
 # Leer el archivo CSV sin la opción "header", luego asignamos manualmente los nombres de las columnas
 df = spark.read.option("delimiter", ",").csv(s3_path)
@@ -29,9 +29,6 @@ for column in numerical_columns:
     mean_value = df.agg({column: 'mean'}).collect()[0][0]
     df = df.na.fill({column: mean_value})
 
-# Supresión de filas con valores nulos en la columna 'timestamp' (si es crítica)
-df = df.dropna(subset=['timestamp'])
-
 # Eliminar duplicados basados en ciertas columnas
 df = df.dropDuplicates(['store_id', 'product_id'])
 
@@ -40,8 +37,8 @@ df = df.withColumn("store_id", df["store_id"].cast(IntegerType()))
 df = df.withColumn("quantity_sold", df["quantity_sold"].cast(IntegerType()))
 df = df.withColumn("revenue", df["revenue"].cast(FloatType()))
 
-# Conversión de la columna 'timestamp' a tipo timestamp
-df = df.withColumn("timestamp", df["timestamp"].cast("timestamp"))
+# Conversión de la columna 'timestamp' de milisegundos a tipo timestamp
+df = df.withColumn("timestamp", (df["timestamp"] / 1000).cast("timestamp"))
 
 # Agregar columna 'Tratados' con valor 'Sí' o 'No'
 df = df.withColumn("Tratados", when(df["quantity_sold"].isNotNull(), "Sí").otherwise("No"))
