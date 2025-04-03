@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json
-from pyspark.sql.types import StructType, StringType, IntegerType, DoubleType
+from pyspark.sql.types import StructType, StringType, IntegerType, DoubleType, LongType
+
 
 aws_access_key_id = 'test'
 aws_secret_access_key = 'test'
@@ -18,6 +19,7 @@ def process_batch(batch_df, batch_id):
             .option('fs.s3a.committer.name', 'partitioned') \
             .option('fs.s3a.committer.staging.conflict-mode', 'replace') \
             .option("fs.s3a.fast.upload.buffer", "bytebuffer")\
+            .option("header", "true") \
             .mode('overwrite') \
             .csv(path='s3a://bucket-1/SalidaKafka', sep=',')
             
@@ -59,7 +61,7 @@ try:
         .load()
 
     schema = StructType() \
-        .add("timestamp", IntegerType()) \
+        .add("timestamp", StringType()) \
         .add("store_id", IntegerType()) \
         .add("product_id", StringType()) \
         .add("quantity_sold", IntegerType()) \

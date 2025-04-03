@@ -13,11 +13,11 @@ producer = KafkaProducer(bootstrap_servers=['localhost:9092'],
 
 while True:
     message = {
-        "timestamp": random.randint(10000000000, 10000000000000) * 1000,# Siempre tiene un valor (sin posibilidad de ser nulo)
-        "store_id": random.randint(1, 100),  # Siempre tiene un valor (sin posibilidad de ser nulo)
-        "product_id": fake.uuid4(),  # Siempre tiene un valor (sin posibilidad de ser nulo)
-        "quantity_sold": random.choice([random.randint(1, 20), None]),  # 10% de probabilidad de ser nulo
-        "revenue": random.choice([round(random.uniform(100.0, 1000.0), 2), None]),  # 10% de probabilidad de ser nulo
+        "timestamp": int(datetime.now().timestamp() * 1000), # Genera un timestamp real en milisegundos
+        "store_id": random.randint(1, 100),  # Siempre tiene un valor
+        "product_id": fake.uuid4(),  # Siempre tiene un valor
+        "quantity_sold": random.choice([random.randint(1, 20), None]),  # 10% de nulos
+        "revenue": random.choice([round(random.uniform(100.0, 1000.0), 2), None]),  # 10% de nulos
     }
 
     producer.send('sales_stream', value=message)
